@@ -6,7 +6,7 @@
 :root{--rose:#e8a0bb;--rose-l:#fbe9f0;--vert:#5f9b7c;--vert-d:#2f5a44;--bg:#fbf8f6;--txt:#2b3a31}
 @media(prefers-color-scheme:dark){:root{--rose-l:#3a2a31;--bg:#1d2420;--txt:#eef3ef;--vert-d:#a9d6bd}}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--txt);line-height:1.5}
-body:before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 0 0,var(--rose-l),transparent 40%),radial-gradient(circle at 100% 100%,#5f9b7c33,transparent 40%);z-index:-1}
+body:before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 0 0,var(--rose-l),transparent 40%),radial-gradient(circle at 100% 100%,#5f9b7c33,transparent 40%);z-index:-1;pointer-events:none}
 main{max-width:720px;margin:0 auto;padding:32px 18px 60px}
 h1{color:var(--vert-d);font-size:2rem;margin:.2em 0}h2,h3{color:var(--vert-d);margin:.2em 0 .6em}
 .sub{opacity:.75}.card{background:color-mix(in srgb,var(--bg) 70%,white);border:1px solid #e8a0bb66;border-radius:16px;padding:18px;margin:14px 0}
