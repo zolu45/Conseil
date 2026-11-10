@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conseil de classe</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--rose:#e8a0bb;--rose-l:#fbe9f0;--vert:#5f9b7c;--vert-d:#2f5a44;--bg:#fbf8f6;--txt:#2b3a31}
+@media(prefers-color-scheme:dark){:root{--rose-l:#3a2a31;--bg:#1d2420;--txt:#eef3ef;--vert-d:#a9d6bd}}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--txt);line-height:1.5}
+body:before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 0 0,var(--rose-l),transparent 40%),radial-gradient(circle at 100% 100%,#5f9b7c33,transparent 40%);z-index:-1}
+main{max-width:720px;margin:0 auto;padding:32px 18px 60px}
+h1{color:var(--vert-d);font-size:2rem;margin:.2em 0}h2,h3{color:var(--vert-d);margin:.2em 0 .6em}
+.sub{opacity:.75}.card{background:color-mix(in srgb,var(--bg) 70%,white);border:1px solid #e8a0bb66;border-radius:16px;padding:18px;margin:14px 0}
+.card.bad{border-color:#d64f7a;box-shadow:0 0 0 3px #d64f7a33}
+.msg{background:var(--rose-l);border-left:5px solid var(--rose);border-radius:12px;padding:14px 16px;margin:14px 0}
+input,textarea,select{width:100%;padding:11px 13px;border:1.5px solid #5f9b7c66;border-radius:12px;font:inherit;color:inherit;background:transparent}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--vert)}textarea{min-height:90px;margin-top:10px;resize:vertical}.hide{display:none}
+.btn,button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:10px 16px;background:var(--vert);color:#fff}
+.btn{display:block;margin:16px 0;padding:12px 22px}button:hover{filter:brightness(1.08)}
+.alt{background:var(--rose);color:#3a1f2b}.ghost{background:transparent;border:1.5px solid var(--vert);color:var(--vert-d)}
+.yn{display:flex;gap:10px}.yn button{flex:1;background:transparent;border:1.5px solid var(--vert);color:var(--vert-d)}.yn button.on{background:var(--vert);color:#fff}
+.err{color:#d64f7a;min-height:1.4em}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}.row>*{width:auto}
+.qrow{display:grid;grid-template-columns:1fr auto auto auto;gap:6px;margin:8px 0}.qrow input{min-width:0}.qrow select{width:auto}
+.stat{font-size:2.2rem;color:var(--vert-d);font-weight:700}pre{white-space:pre-wrap;font:inherit}
+.stu{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #5f9b7c33}
+@media(max-width:560px){.qrow{grid-template-columns:1fr 1fr}.qrow input{grid-column:1/-1}}
+</style></head><body><main id="app"></main>
+<script>
+const $=s=>document.querySelector(s),A=$('#app');
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const card=h=>`<div class="card">${h}</div>`;
+let cfg,code='',name='',sess='',data=[],summary='';
+const api=b=>fetch('/api/app',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.e||'Erreur');return j});
+
+async function init(){try{cfg=await api({a:'config'})}catch(e){}home()}
+function home(){
+ A.innerHTML=`<h1>Conseil de classe</h1><p class="sub">Entre ton nom et ton prénom pour commencer.</p>${card(`<input id="n" placeholder="Nom et prénom" autocomplete="name"><button class="btn" id="go">Continuer</button><div class="err" id="err"></div>`)}`;
+ const go=async()=>{const v=$('#n').value.trim();if(!v)return;
+  if(!/\s/.test(v)){try{const r=await api({a:'login',code:v});code=v;cfg=r.cfg;sess=cfg.session;await load();return draw()}catch(e){}
+   $('#err').textContent='Indique ton nom ET ton prénom.';return}
+  name=v;form()};
+ $('#go').onclick=go;$('#n').onkeydown=e=>e.key==='Enter'&&go()}
+
+function form(){
+ if(!cfg||!cfg.open){A.innerHTML=`<h1>Conseil de classe</h1>${card('<p>Le questionnaire est fermé pour le moment.</p>')}`;return}
+ A.innerHTML=`<h1>Questionnaire</h1><div class="msg">Merci à tous de répondre à ce questionnaire avec sérieux pour que l’on puisse vous représenter au mieux pendant ce conseil. On essayera de répondre à vos demandes.</div>`
+ +cfg.questions.map((q,i)=>`<section class="card" data-i="${i}"><h3>${i+1}. ${esc(q.text)}</h3>${q.type==='yesno'?'<div class="yn"><button data-v="oui">Oui</button><button data-v="non">Non</button></div>':''}<textarea class="${q.type==='yesno'?'hide':''}" placeholder="Écris ta réponse…"></textarea></section>`).join('')
+ +`<button class="btn" id="send">Envoyer le questionnaire</button><div class="err" id="err"></div>`;
+ document.querySelectorAll('section').forEach(c=>{const q=cfg.questions[c.dataset.i];c.querySelectorAll('.yn button').forEach(b=>b.onclick=()=>{c.dataset.v=b.dataset.v;c.classList.remove('bad');c.querySelectorAll('.yn button').forEach(x=>x.classList.toggle('on',x===b));c.querySelector('textarea').classList.toggle('hide',q.ask!==b.dataset.v)})});
+ $('#send').onclick=async()=>{const out=[];
+  for(const [i,q] of cfg.questions.entries()){const c=document.querySelector(`[data-i="${i}"]`),v=c.dataset.v||'',t=c.querySelector('textarea').value.trim(),need=q.type==='text'||(q.ask&&v===q.ask);
+   if((q.type==='yesno'&&!v)||(need&&!t)){c.classList.add('bad');c.scrollIntoView({behavior:'smooth',block:'center'});$('#err').textContent='Merci de répondre à toutes les questions.';return}
+   out.push({q:q.text,v,t:need?t:''})}
+  try{await api({a:'submit',nom:name,answers:out});A.innerHTML=`<h1>Merci ! 🌿</h1>${card('<p>Tes réponses ont bien été envoyées.</p>')}`}catch(e){$('#err').textContent=e.message}}}
+
+async function load(){data=(await api({a:'list',code,session:sess})).rows}
+const save=async()=>{cfg=(await api({a:'save',code,cfg})).cfg};
+function mkpdf(fn,sheets){const d=new jspdf.jsPDF();sheets.forEach((sh,k)=>{if(k)d.addPage();let y=22;sh.forEach(([t,x])=>{const z=t==='h'?18:t==='q'?11:10;d.setFont('helvetica',t==='p'?'normal':'bold');d.setFontSize(z);d.setTextColor(...(t==='h'?[190,80,120]:t==='q'?[40,100,70]:[50,50,50]));d.splitTextToSize(x,170).forEach(l=>{if(y>280){d.addPage();y=22}d.text(l,20,y);y+=z*.5+2});y+=t==='q'?0:3})});d.save(fn+'.pdf')}
+const sheet=r=>[['h',r.nom],['p',sess+' · '+new Date(r.date).toLocaleDateString('fr-FR')],...r.answers.flatMap(a=>[['q',a.q],['p',(a.v?a.v.toUpperCase()+(a.t?' — ':''):'')+a.t]])];
+
+function draw(){
+ const qo=(q,i)=>`<div class="qrow"><input data-f="text" data-i="${i}" value="${esc(q.text)}" placeholder="Question"><select data-f="type" data-i="${i}"><option value="text" ${q.type==='text'?'selected':''}>Texte libre</option><option value="yesno" ${q.type==='yesno'?'selected':''}>Oui / Non</option></select>${q.type==='yesno'?`<select data-f="ask" data-i="${i}"><option value="">Sans précision</option><option value="oui" ${q.ask==='oui'?'selected':''}>Rédiger si oui</option><option value="non" ${q.ask==='non'?'selected':''}>Rédiger si non</option></select>`:'<span></span>'}<button class="alt" data-del="${i}">✕</button></div>`;
+ A.innerHTML=`<h1>Espace délégués</h1>
+ ${card(`<div class="stat">${data.length}</div><div>élève${data.length>1?'s ont':' a'} participé · ${esc(sess)}</div>
+ <div class="row"><select id="ses">${['Trimestre 1','Trimestre 2','Trimestre 3'].map(t=>`<option ${t===cfg.session?'selected':''}>${t}</option>`).join('')}</select><button id="tog" class="${cfg.open?'':'alt'}">${cfg.open?'Session ouverte — fermer':'Session fermée — ouvrir'}</button></div>`)}
+ ${card(`<h3>Fiches élèves</h3>${data.map((r,i)=>`<div class="stu"><span>${esc(r.nom)}</span><button class="ghost" data-pdf="${i}">PDF</button></div>`).join('')||'<p class="sub">Aucune réponse.</p>'}${data.length?'<button class="btn" id="all">Tout exporter en PDF</button>':''}`)}
+ ${card(`<h3>Résumé IA de la classe</h3><button id="sum">Générer le résumé</button><div id="sumout">${summary?`<pre>${esc(summary)}</pre><button class="alt" id="sumpdf">Exporter en PDF</button>`:''}</div><div class="err" id="err"></div>`)}
+ ${card(`<h3>Modifier le questionnaire</h3>${cfg.questions.map(qo).join('')}<div class="row"><button class="ghost" id="add">+ Ajouter une question</button><button id="sv">Enregistrer</button></div>`)}
+ <button class="ghost" onclick="location.reload()">Quitter</button>`;
+ $('#ses').onchange=async e=>{cfg.session=sess=e.target.value;summary='';await save();await load();draw()};
+ $('#tog').onclick=async()=>{cfg.open=!cfg.open;await save();draw()};
+ document.querySelectorAll('[data-pdf]').forEach(b=>b.onclick=()=>mkpdf('fiche-'+data[b.dataset.pdf].nom.replace(/\s+/g,'-'),[sheet(data[b.dataset.pdf])]));
+ if($('#all'))$('#all').onclick=()=>mkpdf('fiches-'+sess.replace(/\s+/g,'-'),data.map(sheet));
+ $('#sum').onclick=async()=>{$('#sum').textContent='Analyse en cours…';try{summary=(await api({a:'summary',code,session:sess})).text;draw()}catch(e){$('#sum').textContent='Générer le résumé';$('#err').textContent=e.message}};
+ if($('#sumpdf'))$('#sumpdf').onclick=()=>mkpdf('resume-'+sess.replace(/\s+/g,'-'),[[['h','Résumé de la classe — '+sess],...summary.split('\n').filter(l=>l.trim()).map(l=>l.startsWith('#')?['q',l.replace(/^#+\s*/,'')]:['p',l.replace(/\*\*/g,'')])]]);
+ document.querySelectorAll('.qrow [data-f]').forEach(el=>el.onchange=()=>{cfg.questions[el.dataset.i][el.dataset.f]=el.value;if(el.dataset.f==='type')draw()});
+ document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{cfg.questions.splice(b.dataset.del,1);draw()});
+ $('#add').onclick=()=>{cfg.questions.push({id:'q'+Date.now(),text:'',type:'text',ask:''});draw()};
+ $('#sv').onclick=async()=>{await save();$('#sv').textContent='Enregistré ✓'};
+}
+init();
+</script></body></html>
